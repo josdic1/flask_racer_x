@@ -1,6 +1,7 @@
 from app.database import db
 from datetime import datetime, timezone
 
+
 class User(db.Model):
     __tablename__ = 'users'
     

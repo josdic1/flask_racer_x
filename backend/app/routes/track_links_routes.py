@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, abort
 from sqlalchemy.exc import IntegrityError
 from app.database import db
-from app.models import Track_Link
+from app.models import Track, Track_Link
 from app.utils import paginate_query  # Import the pagination utility
 
 track_links_bp = Blueprint('track_links', __name__)
@@ -73,12 +73,10 @@ def delete_track_link(id):
         db.session.rollback()
         abort(500, description=f"Server error: {str(e)}")
 
+
 @track_links_bp.route('/track_links/<int:id>', methods=['PUT', 'PATCH'])
 def update_track_link(id):
-    """Update a track link by ID.
-    Request Body: { "link_type": str (optional), "link_url": str (optional), "track_id": int (optional) }
-    Returns: JSON of updated track link (200)
-    """
+    """Update a track link by ID."""
     track_link = Track_Link.query.get_or_404(id)
     data = request.get_json()
     if not data:
@@ -93,6 +91,9 @@ def update_track_link(id):
             abort(400, description="link_url must be a non-empty string")
         track_link.link_url = data['link_url']
     if 'track_id' in data:
+        if data['track_id'] is not None:
+            Track.query.get_or_404(data['track_id'], description="Track with this ID not found")
+        
         if not isinstance(data['track_id'], (int, type(None))):
             abort(400, description="track_id must be an integer or null")
         track_link.track_id = data['track_id']
@@ -100,9 +101,9 @@ def update_track_link(id):
     try:
         db.session.commit()
         return jsonify(track_link.to_dict()), 200
-    except IntegrityError:
+    except IntegrityError: # This now serves as a fallback, not primary validation
         db.session.rollback()
-        abort(400, description="Invalid track_id or duplicate entry")
+        abort(400, description="Duplicate entry detected")
     except Exception as e:
         db.session.rollback()
         abort(500, description=f"Server error: {str(e)}")
