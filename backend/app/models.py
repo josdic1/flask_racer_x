@@ -8,7 +8,7 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(80), unique=False, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     def to_dict(self):
         return {
@@ -25,7 +25,7 @@ class Track(db.Model):
     title = db.Column(db.String(100), nullable=False)
     artist = db.Column(db.String(100), nullable=True)
     genre = db.Column(db.String(50), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.timezone.utc)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     def to_dict(self):
         return {
