@@ -1,51 +1,30 @@
-import { useState, useEffect } from 'react'
-import { healthCheck, getTracks } from './services/api'
+import { register, login, getUsers } from './api';
 
 function App() {
-  const [health, setHealth] = useState(null)
-  const [tracks, setTracks] = useState([])
+  const handleRegister = async () => {
+    const userData = { username: 'testuser', email: 'test@example.com', password: 'SecurePass123' };
+    const result = await register(userData);
+    console.log(result);
+  };
 
-  useEffect(() => {
-    checkHealth()
-    fetchTracks()
-  }, [])
+  const handleLogin = async () => {
+    const credentials = { email: 'test@example.com', password: 'SecurePass123' };
+    const result = await login(credentials);
+    console.log(result);
+  };
 
-  const checkHealth = async () => {
-    try {
-      const response = await healthCheck()
-      setHealth(response.data)
-    } catch (error) {
-      console.error('Health check failed:', error)
-    }
-  }
-
-  const fetchTracks = async () => {
-    try {
-      const response = await getTracks()
-      setTracks(response.data)
-    } catch (error) {
-      console.error('Error:', error)
-    }
-  }
+  const handleGetUsers = async () => {
+    const token = localStorage.getItem('token');
+    const users = await getUsers(token);
+    console.log(users);
+  };
 
   return (
-    <div className="App">
-      <h1>Flask Racer X</h1>
-      {health && <p>✅ {health.message}</p>}
-      <h2>Tracks</h2>
-      {tracks.length === 0 ? (
-        <p>No tracks yet</p>
-      ) : (
-        <ul>
-          {tracks.map(track => (
-                        <li key={track.id}>
-              <strong>{track.title}</strong> - {track.artist} ({track.genre})
-            </li>
-          ))}
-        </ul>
-      )}
+    <div>
+      <button onClick={handleRegister}>Register</button>
+      <button onClick={handleLogin}>Login</button>
+      <button onClick={handleGetUsers}>Get Users</button>
     </div>
-  )
+  );
 }
-
-export default App
+export default App;
