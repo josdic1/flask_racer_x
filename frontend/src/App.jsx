@@ -38,7 +38,9 @@ function App() {
       ) : (
         <ul>
           {tracks.map(track => (
-            <li key={track.id}>{track.name} - {track.location}</li>
+                        <li key={track.id}>
+              <strong>{track.title}</strong> - {track.artist} ({track.genre})
+            </li>
           ))}
         </ul>
       )}

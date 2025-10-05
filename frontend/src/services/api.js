@@ -12,3 +12,6 @@ export const api = axios.create({
 export const healthCheck = () => api.get('/health');
 export const getTracks = () => api.get('/tracks');
 export const createTrack = (trackData) => api.post('/tracks', trackData);
+export const getTrack = (id) => api.get(`/tracks/${id}`);
+export const updateTrack = (id, trackData) => api.patch(`/tracks/${id}`, trackData);
+export const deleteTrack = (id) => api.delete(`/tracks/${id}`);
