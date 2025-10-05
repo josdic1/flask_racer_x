@@ -11,16 +11,15 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-    track = db.relationship('Track', backref='user', lazy=True)
+    tracks = db.Column('Track', backref='user', lazy=True)
 
-    
     def to_dict(self):
         return {
             'id': self.id,
             'username': self.username,
             'email': self.email,
             'created_at': self.created_at.isoformat(),
-            'updated_at': self.created_at.isoformat()
+            'updated_at': self.updated_at.isoformat()
         }
 
 class Track(db.Model):
@@ -35,21 +34,20 @@ class Track(db.Model):
 
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('tracks', lazy=True))
-
     links = db.relationship('Track_Link', backref='track', lazy=True)
     
     def to_dict(self):
         return {
             'id': self.id,
-            'title': self.title ,
+            'title': self.title,
             'artist': self.artist or '',
             'genre': self.genre or '',
             'created_at': self.created_at.isoformat(),
-            'updated_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
             'user_id': self.user_id,
             'links': [link.to_dict() for link in self.links]
         }
-    
+
 class Track_Link(db.Model):
     __tablename__ = 'track_links'
     
@@ -61,13 +59,16 @@ class Track_Link(db.Model):
 
     track_id = db.Column(db.Integer, db.ForeignKey('tracks.id'), nullable=False)
     track = db.relationship('Track', backref=db.backref('links', lazy=True))
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False) 
+    user = db.relationship('User', backref=db.backref('track_links', lazy=True))  
     
     def to_dict(self):
         return {
             'id': self.id,
-            'link_type': self.link_type ,
+            'link_type': self.link_type,
             'link_url': self.link_url,
             'created_at': self.created_at.isoformat(),
-            'updated_at': self.created_at.isoformat(),
-            'track_id': self.track_id
+            'updated_at': self.updated_at.isoformat(),
+            'track_id': self.track_id,
+            'user_id': self.user_id  # Added
         }

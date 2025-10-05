@@ -1,0 +1,154 @@
+from flask import Blueprint, jsonify, request, abort
+from sqlalchemy.exc import IntegrityError
+from app.database import db
+from app.models import Track_Link
+
+track_links_bp = Blueprint('track_links', __name__)
+
+@track_links_bp.route('/health', methods=['GET'])
+def health():
+    """Return API health status."""
+    return jsonify({'status': 'healthy', 'message': 'Flask Racer X is running'}), 200
+
+@track_links_bp.route('/track_links', methods=['GET'])
+def get_track_links():
+    """Retrieve paginated list of all track links."""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    if per_page > 100:  # Limit maximum page size
+        abort(400, description="per_page cannot exceed 100")
+    
+    pagination = Track_Link.query.paginate(page=page, per_page=per_page, error_out=False)
+    return jsonify({
+        'data': [track_link.to_dict() for track_link in pagination.items],
+        'page': pagination.page,
+        'total': pagination.total,
+        'pages': pagination.pages
+    }), 200
+
+@track_links_bp.route('/track_links/<int:track_id>', methods=['GET'])
+def get_track_links_by_track(track_id):
+    """Retrieve track links for a specific track ID."""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    if per_page > 100:
+        abort(400, description="per_page cannot exceed 100")
+    
+    pagination = Track_Link.query.filter_by(track_id=track_id).paginate(page=page, per_page=per_page, error_out=False)
+    return jsonify({
+        'data': [track_link.to_dict() for track_link in pagination.items],
+        'page': pagination.page,
+        'total': pagination.total,
+        'pages': pagination.pages
+    }), 200
+
+@track_links_bp.route('/track_links', methods=['POST'])
+def create_track_link():
+    """Create a new track link.
+    Request Body: { "link_type": str, "link_url": str, "track_id": int (optional) }
+    Returns: JSON of created track link (201)
+    """
+    data = request.get_json()
+    if not data:
+        abort(400, description="No JSON data provided")
+    
+    required_fields = ['link_type', 'link_url']
+    if not all(field in data for field in required_fields):
+        abort(400, description="Missing required fields: link_type, link_url")
+    
+    if not isinstance(data['link_type'], str) or not data['link_type'].strip():
+        abort(400, description="link_type must be a non-empty string")
+    if not isinstance(data['link_url'], str) or not data['link_url'].strip():
+        abort(400, description="link_url must be a non-empty string")
+    if 'track_id' in data and not isinstance(data['track_id'], (int, type(None))):
+        abort(400, description="track_id must be an integer or null")
+    
+    try:
+        track_link = Track_Link(
+            link_type=data['link_type'],
+            link_url=data['link_url'],
+            track_id=data.get('track_id')
+        )
+        db.session.add(track_link)
+        db.session.commit()
+        return jsonify(track_link.to_dict()), 201
+    except IntegrityError:
+        db.session.rollback()
+        abort(400, description="Invalid track_id or duplicate entry")
+    except Exception as e:
+        db.session.rollback()
+        abort(500, description=f"Server error: {str(e)}")
+
+@track_links_bp.route('/track_links/<int:id>', methods=['DELETE'])
+def delete_track_link(id):
+    """Delete a track link by ID."""
+    track_link = Track_Link.query.get_or_404(id)
+    try:
+        data = track_link.to_dict()  # Capture data before deletion
+        db.session.delete(track_link)
+        db.session.commit()
+        return jsonify({'message': 'Track link deleted', 'data': data}), 200
+    except Exception as e:
+        db.session.rollback()
+        abort(500, description=f"Server error: {str(e)}")
+
+@track_links_bp.route('/track_links/<int:id>', methods=['PUT', 'PATCH'])
+def update_track_link(id):
+    """Update a track link by ID.
+    Request Body: { "link_type": str (optional), "link_url": str (optional), "track_id": int (optional) }
+    Returns: JSON of updated track link (200)
+    """
+    track_link = Track_Link.query.get_or_404(id)
+    data = request.get_json()
+    if not data:
+        abort(400, description="No JSON data provided")
+    
+    if 'link_type' in data:
+        if not isinstance(data['link_type'], str) or not data['link_type'].strip():
+            abort(400, description="link_type must be a non-empty string")
+        track_link.link_type = data['link_type']
+    if 'link_url' in data:
+        if not isinstance(data['link_url'], str) or not data['link_url'].strip():
+            abort(400, description="link_url must be a non-empty string")
+        track_link.link_url = data['link_url']
+    if 'track_id' in data:
+        if not isinstance(data['track_id'], (int, type(None))):
+            abort(400, description="track_id must be an integer or null")
+        track_link.track_id = data['track_id']
+    
+    try:
+        db.session.commit()
+        return jsonify(track_link.to_dict()), 200
+    except IntegrityError:
+        db.session.rollback()
+        abort(400, description="Invalid track_id or duplicate entry")
+    except Exception as e:
+        db.session.rollback()
+        abort(500, description=f"Server error: {str(e)}")
+
+@track_links_bp.route('/track_links/search', methods=['GET'])
+def search_track_links_route():
+    """Search track links by link_type or link_url.
+    Query Param: q (string, max length 100)
+    Returns: Paginated list of matching track links
+    """
+    query = request.args.get('q', '').strip()
+    if len(query) > 100:
+        abort(400, description="Query too long")
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    if per_page > 100:
+        abort(400, description="per_page cannot exceed 100")
+    
+    results = Track_Link.query.filter(
+        (Track_Link.link_type.ilike(f'%{query}%')) |
+        (Track_Link.link_url.ilike(f'%{query}%'))
+    ).paginate(page=page, per_page=per_page, error_out=False)
+    
+    return jsonify({
+        'data': [link.to_dict() for link in results.items],
+        'page': results.page,
+        'total': results.total,
+        'pages': results.pages
+    }), 200
