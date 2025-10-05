@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request, abort
 from sqlalchemy.exc import IntegrityError
 from app.database import db
 from app.models import Track, Track_Link
-from app.utils import paginate_query  # Import the pagination utility
+from app.utils.pagination import paginate_query  # Import the pagination utility
 
 track_links_bp = Blueprint('track_links', __name__)
 

@@ -2,7 +2,8 @@ from flask import Blueprint, jsonify, request, abort
 from sqlalchemy.exc import IntegrityError
 from app.database import db
 from app.models import Track, Track_Link
-from app.utils import paginate_query  # Import pagination utility
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.utils.pagination import paginate_query  # Import pagination utility
 
 tracks_bp = Blueprint('track_bp', __name__)
 
@@ -24,6 +25,7 @@ def get_track(id):
     return jsonify(track.to_dict()), 200
 
 @tracks_bp.route('/tracks', methods=['POST'])
+@jwt_required()
 def create_track():
     """Create a new track.
     Request Body: { "title": str, "artist": str (optional), "genre": str (optional) }
@@ -45,10 +47,18 @@ def create_track():
         abort(400, description="genre must be a string or null")
 
     try:
+        # If authenticated, associate the track with the requesting user
+        user_id = None
+        try:
+            user_id = get_jwt_identity()
+        except Exception:
+            user_id = None
+
         track = Track(
             title=data['title'],
             artist=data.get('artist'),
-            genre=data.get('genre')
+            genre=data.get('genre'),
+            user_id=user_id if user_id is not None else data.get('user_id', None)
         )
         db.session.add(track)
         db.session.commit()
@@ -115,6 +125,7 @@ def get_links_for_track(track_id):
     return jsonify(paginate_query(query)), 200
 
 @tracks_bp.route('/tracks/<int:track_id>/links', methods=['POST'])
+@jwt_required()
 def add_link_to_track(track_id):
     """Add a link to a track.
     Request Body: { "link_type": str, "link_url": str }
@@ -135,10 +146,18 @@ def add_link_to_track(track_id):
         abort(400, description="link_url must be a non-empty string")
 
     try:
+        # user_id from token if available
+        user_id = None
+        try:
+            user_id = get_jwt_identity()
+        except Exception:
+            user_id = None
+
         link = Track_Link(
             link_type=data['link_type'],
             link_url=data['link_url'],
-            track_id=track_id
+            track_id=track_id,
+            user_id=user_id if user_id is not None else data.get('user_id', None)
         )
         db.session.add(link)
         db.session.commit()

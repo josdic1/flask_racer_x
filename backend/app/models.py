@@ -12,7 +12,8 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-    tracks = db.relationship('Track', backref='user', lazy=True)
+    tracks = db.relationship('Track', back_populates='user', lazy=True)
+    track_links = db.relationship('Track_Link', back_populates='user', lazy=True)
 
     def set_password(self, password):
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
@@ -40,8 +41,8 @@ class Track(db.Model):
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    user = db.relationship('User', backref=db.backref('tracks', lazy=True))
-    links = db.relationship('Track_Link', backref='track', lazy=True)
+    user = db.relationship('User', back_populates='tracks', lazy=True)
+    links = db.relationship('Track_Link', back_populates='track', lazy=True)
     
     def to_dict(self):
         return {
@@ -65,9 +66,9 @@ class Track_Link(db.Model):
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     track_id = db.Column(db.Integer, db.ForeignKey('tracks.id'), nullable=False)
-    track = db.relationship('Track', backref=db.backref('links', lazy=True))
+    track = db.relationship('Track', back_populates='links', lazy=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False) 
-    user = db.relationship('User', backref=db.backref('track_links', lazy=True))  
+    user = db.relationship('User', back_populates='track_links', lazy=True)  
     
     def to_dict(self):
         return {
@@ -79,3 +80,10 @@ class Track_Link(db.Model):
             'track_id': self.track_id,
             'user_id': self.user_id  # Added
         }
+
+
+class TokenBlocklist(db.Model):
+    __tablename__ = 'token_blocklist'
+    id = db.Column(db.Integer, primary_key=True)
+    jti = db.Column(db.String(36), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
