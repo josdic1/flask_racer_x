@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { healthCheck, getTracks } from './services/api'
-import './App.css'
 
 function App() {
   const [health, setHealth] = useState(null)
