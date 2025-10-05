@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, abort
 from sqlalchemy.exc import IntegrityError
 from app.database import db
 from app.models import Track_Link
+from app.utils import paginate_query  # Import the pagination utility
 
 track_links_bp = Blueprint('track_links', __name__)
 
@@ -13,34 +14,14 @@ def health():
 @track_links_bp.route('/track_links', methods=['GET'])
 def get_track_links():
     """Retrieve paginated list of all track links."""
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-    if per_page > 100:  # Limit maximum page size
-        abort(400, description="per_page cannot exceed 100")
-    
-    pagination = Track_Link.query.paginate(page=page, per_page=per_page, error_out=False)
-    return jsonify({
-        'data': [track_link.to_dict() for track_link in pagination.items],
-        'page': pagination.page,
-        'total': pagination.total,
-        'pages': pagination.pages
-    }), 200
+    query = Track_Link.query
+    return jsonify(paginate_query(query)), 200
 
 @track_links_bp.route('/track_links/<int:track_id>', methods=['GET'])
 def get_track_links_by_track(track_id):
     """Retrieve track links for a specific track ID."""
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-    if per_page > 100:
-        abort(400, description="per_page cannot exceed 100")
-    
-    pagination = Track_Link.query.filter_by(track_id=track_id).paginate(page=page, per_page=per_page, error_out=False)
-    return jsonify({
-        'data': [track_link.to_dict() for track_link in pagination.items],
-        'page': pagination.page,
-        'total': pagination.total,
-        'pages': pagination.pages
-    }), 200
+    query = Track_Link.query.filter_by(track_id=track_id)
+    return jsonify(paginate_query(query)), 200
 
 @track_links_bp.route('/track_links', methods=['POST'])
 def create_track_link():
@@ -132,23 +113,12 @@ def search_track_links_route():
     Query Param: q (string, max length 100)
     Returns: Paginated list of matching track links
     """
-    query = request.args.get('q', '').strip()
-    if len(query) > 100:
+    query_str = request.args.get('q', '').strip()
+    if len(query_str) > 100:
         abort(400, description="Query too long")
     
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-    if per_page > 100:
-        abort(400, description="per_page cannot exceed 100")
-    
-    results = Track_Link.query.filter(
-        (Track_Link.link_type.ilike(f'%{query}%')) |
-        (Track_Link.link_url.ilike(f'%{query}%'))
-    ).paginate(page=page, per_page=per_page, error_out=False)
-    
-    return jsonify({
-        'data': [link.to_dict() for link in results.items],
-        'page': results.page,
-        'total': results.total,
-        'pages': results.pages
-    }), 200
+    query = Track_Link.query.filter(
+        (Track_Link.link_type.ilike(f'%{query_str}%')) |
+        (Track_Link.link_url.ilike(f'%{query_str}%'))
+    )
+    return jsonify(paginate_query(query)), 200
